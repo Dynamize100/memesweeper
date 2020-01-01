@@ -3,6 +3,7 @@
 #include <random>
 #include "Vei2.h"
 #include "SpriteCodex.h"
+#include <algorithm>
 
 void MemeField::Tile::SpawnMeme() {
 	assert(!hasMeme);
@@ -13,20 +14,49 @@ bool MemeField::Tile::HasMeme() const {
 	return hasMeme;
 }
 
-void MemeField::Tile::Draw(const Vei2 & screenPos, Graphics & gfx) const {
-	switch (state) {
+void MemeField::Tile::Draw(const Vei2 & screenPos, bool exploded, Graphics & gfx) const {
+	if (exploded) {
+		switch (state) {
 		case State::HIDDEN:
 			SpriteCodex::DrawTileButton(screenPos, gfx);
-		break;
+			break;
 		case State::FLAGGED:
 			SpriteCodex::DrawTileButton(screenPos, gfx);
 			SpriteCodex::DrawTileFlag(screenPos, gfx);
-		break;
+			break;
 		case State::REVEALED:
-			if (!HasMeme()) SpriteCodex::DrawTile0(screenPos, gfx);
-			else SpriteCodex::DrawTileBomb(screenPos, gfx);
-		break;
+			if (HasMeme()) SpriteCodex::DrawTileBomb(screenPos, gfx);
+			else SpriteCodex::DrawTileNumber(screenPos, nNeighbourMemes, gfx); 
+			break;
+		}
+	} else {
+		switch (state) {
+		case State::HIDDEN:
+			if (HasMeme()) {
+				SpriteCodex::DrawTileBomb(screenPos, gfx);
+			} else {
+				SpriteCodex::DrawTileButton(screenPos, gfx);
+			}
+			break;
+		case State::FLAGGED:
+			if (HasMeme()) {
+				SpriteCodex::DrawTileBomb(screenPos, gfx);
+				SpriteCodex::DrawTileFlag(screenPos, gfx);
+			} else {
+				SpriteCodex::DrawTileBomb(screenPos, gfx);
+				SpriteCodex::DrawTileCross(screenPos, gfx);
+			}
+			break;
+		case State::REVEALED:
+			if (HasMeme()) {
+				SpriteCodex::DrawTileBombRed(screenPos, gfx);
+			} else {
+				SpriteCodex::DrawTileNumber(screenPos, nNeighbourMemes, gfx);
+			}
+			break;
+		}
 	}
+
 }
 
 void MemeField::Tile::Reveal() {
@@ -51,6 +81,11 @@ bool MemeField::Tile::IsFlagged() const {
 	return state == State::FLAGGED;
 }
 
+void MemeField::Tile::SetNeighbourMemeCount(int memeCount) {
+	assert(nNeighbourMemes == -1);
+	nNeighbourMemes = memeCount;
+}
+
 MemeField::MemeField(int nMemes) {
 	assert(nMemes > 0 && nMemes < width * heigth);
 	std::random_device rd;
@@ -65,22 +100,18 @@ MemeField::MemeField(int nMemes) {
 		} while (TileAt(spawnPos).HasMeme());
 		TileAt(spawnPos).SpawnMeme();
 	}
-
-	// reveal test
-	for (int i = 0; i < 120; i++) {
-		const Vei2 gridPos = { xDist(rng), yDist(rng) };
-		if (!TileAt(gridPos).IsRevealed()) {
-			TileAt(gridPos).Reveal();
-		}			
+	for (Vei2 gridPos = { 0,0 }; gridPos.y < heigth; gridPos.y++) {
+		for (gridPos.x = 0; gridPos.x < width; gridPos.x++) {
+			TileAt(gridPos).SetNeighbourMemeCount(CountNeighbourMemes(gridPos));
+		}
 	}
-
 }
 
 void MemeField::Draw(Graphics & gfx) const {
 	gfx.DrawRect(GetRect(), SpriteCodex::baseColor);
 	for (Vei2 gridPos = { 0,0 }; gridPos.y < heigth; gridPos.y++) {
 		for (gridPos.x = 0; gridPos.x < width; gridPos.x++) {
-			TileAt(gridPos).Draw(gridPos * SpriteCodex::tileSize, gfx);
+			TileAt(gridPos).Draw(gridPos * SpriteCodex::tileSize, isExploded, gfx);
 		}
 	}
 }
@@ -90,15 +121,20 @@ RectI MemeField::GetRect() const {
 }
 
 void MemeField::OnRevealClick(const Vei2 & screePos) {
+	if (isExploded) return;
 	const Vei2 gridPos = ScreenToGrid(screePos);
 	assert(gridPos.x >= 0 && gridPos.x < width && gridPos.y >= 0 && gridPos.y < heigth);
 	Tile& tile = TileAt(gridPos);
 	if (!tile.IsRevealed() && !tile.IsFlagged()) {
 		tile.Reveal();
+		if (tile.HasMeme()) {
+			isExploded = true;
+		}
 	}
 }
 
 void MemeField::OnFlagClick(const Vei2 & screePos) {
+	if (isExploded) return;
 	const Vei2 gridPos = ScreenToGrid(screePos);
 	assert(gridPos.x >= 0 && gridPos.x < width && gridPos.y >= 0 && gridPos.y < heigth);
 	Tile& tile = TileAt(gridPos);
@@ -117,4 +153,21 @@ const MemeField::Tile & MemeField::TileAt(const Vei2 & gridPos) const {
 
 Vei2 MemeField::ScreenToGrid(const Vei2 & screenPos) {
 	return screenPos / SpriteCodex::tileSize;
+}
+
+int MemeField::CountNeighbourMemes(const Vei2 & gridPos) {
+	const int xStart = std::max(0, gridPos.x - 1);
+	const int yStart = std::max(0, gridPos.y - 1);
+	const int xEnd = std::min(width - 1, gridPos.x + 1);
+	const int yEnd = std::min(heigth - 1, gridPos.y + 1);
+
+	int count = 0;
+	for (Vei2 gridPos = { xStart, yStart }; gridPos.y <= yEnd; gridPos.y++) {
+		for (gridPos.x = xStart; gridPos.x <= xEnd; gridPos.x++) {
+			if (TileAt(gridPos).HasMeme()) {
+				count++;
+			}
+		}
+	}
+	return count;
 }
