@@ -15,7 +15,7 @@ bool MemeField::Tile::HasMeme() const {
 }
 
 void MemeField::Tile::Draw(const Vei2 & screenPos, bool exploded, Graphics & gfx) const {
-	if (exploded) {
+	if (!exploded) {
 		switch (state) {
 		case State::HIDDEN:
 			SpriteCodex::DrawTileButton(screenPos, gfx);
