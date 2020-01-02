@@ -37,6 +37,7 @@ void Game::Go() {
 }
 
 void Game::UpdateModel() {
+	if (field.GameIsWon()) return;
 	while (!wnd.mouse.IsEmpty()) {
 		const Mouse::Event e = wnd.mouse.Read();
 		if (e.GetType() == Mouse::Event::Type::LPress) {
