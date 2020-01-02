@@ -132,6 +132,7 @@ void MemeField::OnRevealClick(const Vei2 & screePos) {
 		tile.Reveal();
 		if (tile.HasMeme()) {
 			isExploded = true;
+			sndLose.Play();
 		}
 	}
 }
@@ -173,4 +174,15 @@ int MemeField::CountNeighbourMemes(const Vei2 & gridPos) {
 		}
 	}
 	return count;
+}
+
+bool MemeField::GameIsWon() const {
+	for (const Tile& t : field)
+		if ((t.HasMeme() && !t.IsFlagged()) || (!t.HasMeme() && !t.IsRevealed())) 
+			return false;
+	return true;
+}
+
+bool MemeField::GameIsLost() const {
+	return isExploded;
 }
