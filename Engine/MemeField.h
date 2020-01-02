@@ -37,7 +37,7 @@ private:
 	int CountNeighbourMemes(const Vei2& gridPos);
 private:
 	static constexpr int width = 20;
-	static constexpr int heigth = 20;
+	static constexpr int heigth = 16;
 	Vei2 topLeft;
 	bool isExploded = false;
 	Tile field[width*heigth];
