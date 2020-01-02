@@ -36,19 +36,20 @@ void Game::Go() {
 	gfx.EndFrame();
 }
 
-void Game::UpdateModel() {
-	if (field.GameIsWon()) return;
+void Game::UpdateModel() {	
 	while (!wnd.mouse.IsEmpty()) {
 		const Mouse::Event e = wnd.mouse.Read();
-		if (e.GetType() == Mouse::Event::Type::LPress) {
-			const Vei2 mousePos = e.GetPos();
-			if (field.GetRect().Contains(mousePos)) {
-				field.OnRevealClick(mousePos);
-			}
-		} else if (e.GetType() == Mouse::Event::Type::RPress) {
-			const Vei2 mousePos = e.GetPos();
-			if (field.GetRect().Contains(mousePos)) {
-				field.OnFlagClick(mousePos);
+		if (field.GetState() == MemeField::State::MEMING) {
+			if (e.GetType() == Mouse::Event::Type::LPress) {
+				const Vei2 mousePos = e.GetPos();
+				if (field.GetRect().Contains(mousePos)) {
+					field.OnRevealClick(mousePos);
+				}
+			} else if (e.GetType() == Mouse::Event::Type::RPress) {
+				const Vei2 mousePos = e.GetPos();
+				if (field.GetRect().Contains(mousePos)) {
+					field.OnFlagClick(mousePos);
+				}
 			}
 		}
 	}
@@ -57,7 +58,7 @@ void Game::UpdateModel() {
 
 void Game::ComposeFrame() {
 	field.Draw(gfx);
-	if (field.GameIsWon()) {
+	if (field.GetState() == MemeField::State::WON) {
 		SpriteCodex::DrawWin(gfx.GetRect().GetCenter(), gfx);
 	}
 }
