@@ -90,14 +90,17 @@ void MemeField::Tile::SetNeighbourMemeCount(int memeCount) {
 	nNeighbourMemes = memeCount;
 }
 
-MemeField::MemeField(const Vei2& center, int nMemes) 
+MemeField::MemeField(const Vei2& center, int width, int height, int nMemes)
 	:
-	topLeft(center - Vei2 (width * SpriteCodex::tileSize, heigth * SpriteCodex::tileSize) / 2) {
-	assert(nMemes > 0 && nMemes < width * heigth);
+	width(width),
+	height(height),
+	field(new Tile[width * height]),
+	topLeft(center - Vei2 (width * SpriteCodex::tileSize, height * SpriteCodex::tileSize) / 2) {
+	assert(nMemes > 0 && nMemes < width * height);
 	std::random_device rd;
 	std::mt19937 rng(rd());
 	std::uniform_int_distribution<int> xDist(0, width - 1);
-	std::uniform_int_distribution<int> yDist(0, heigth - 1);
+	std::uniform_int_distribution<int> yDist(0, height - 1);
 
 	for (int nSpawned = 0; nSpawned < nMemes; ++nSpawned) {
 		Vei2 spawnPos;
@@ -106,17 +109,22 @@ MemeField::MemeField(const Vei2& center, int nMemes)
 		} while (TileAt(spawnPos).HasMeme());
 		TileAt(spawnPos).SpawnMeme();
 	}
-	for (Vei2 gridPos = { 0,0 }; gridPos.y < heigth; gridPos.y++) {
+	for (Vei2 gridPos = { 0,0 }; gridPos.y < height; gridPos.y++) {
 		for (gridPos.x = 0; gridPos.x < width; gridPos.x++) {
 			TileAt(gridPos).SetNeighbourMemeCount(CountNeighbourMemes(gridPos));
 		}
 	}
 }
 
+MemeField::~MemeField() {
+	delete[] field;
+	field = nullptr;
+}
+
 void MemeField::Draw(Graphics & gfx) const {
 	gfx.DrawRect(GetRect().GetExpanded(borderThickness), borderColor);
 	gfx.DrawRect(GetRect(), SpriteCodex::baseColor);
-	for (Vei2 gridPos = { 0,0 }; gridPos.y < heigth; gridPos.y++) {
+	for (Vei2 gridPos = { 0,0 }; gridPos.y < height; gridPos.y++) {
 		for (gridPos.x = 0; gridPos.x < width; gridPos.x++) {
 			TileAt(gridPos).Draw( topLeft + gridPos * SpriteCodex::tileSize, state, gfx);
 		}
@@ -124,13 +132,13 @@ void MemeField::Draw(Graphics & gfx) const {
 }
 
 RectI MemeField::GetRect() const {
-	return RectI(topLeft, width * SpriteCodex::tileSize, heigth * SpriteCodex::tileSize);
+	return RectI(topLeft, width * SpriteCodex::tileSize, height * SpriteCodex::tileSize);
 }
 
 void MemeField::OnRevealClick(const Vei2 & screePos) {
 	if (state != State::MEMING) return;
 	const Vei2 gridPos = ScreenToGrid(screePos);
-	assert(gridPos.x >= 0 && gridPos.x < width && gridPos.y >= 0 && gridPos.y < heigth);
+	assert(gridPos.x >= 0 && gridPos.x < width && gridPos.y >= 0 && gridPos.y < height);
 	RevealTile(gridPos);
 	if (GameIsWon()) {
 		state = State::WON;
@@ -140,10 +148,13 @@ void MemeField::OnRevealClick(const Vei2 & screePos) {
 void MemeField::OnFlagClick(const Vei2 & screePos) {
 	if (state != State::MEMING) return;
 	const Vei2 gridPos = ScreenToGrid(screePos);
-	assert(gridPos.x >= 0 && gridPos.x < width && gridPos.y >= 0 && gridPos.y < heigth);
+	assert(gridPos.x >= 0 && gridPos.x < width && gridPos.y >= 0 && gridPos.y < height);
 	Tile& tile = TileAt(gridPos);
 	if (!tile.IsRevealed()) {
 		tile.ToggleFlag();
+		if (tile.IsFlagged() && GameIsWon()) {
+			state = State::WON;
+		}
 	}
 }
 
@@ -162,7 +173,7 @@ void MemeField::RevealTile(const Vei2 & gridPos) {
 			const int xStart = std::max(0, gridPos.x - 1);
 			const int yStart = std::max(0, gridPos.y - 1);
 			const int xEnd = std::min(width - 1, gridPos.x + 1);
-			const int yEnd = std::min(heigth - 1, gridPos.y + 1);
+			const int yEnd = std::min(height - 1, gridPos.y + 1);
 
 			for (Vei2 gridPos = { xStart, yStart }; gridPos.y <= yEnd; gridPos.y++) {
 				for (gridPos.x = xStart; gridPos.x <= xEnd; gridPos.x++) {
@@ -189,7 +200,7 @@ int MemeField::CountNeighbourMemes(const Vei2 & gridPos) {
 	const int xStart = std::max(0, gridPos.x - 1);
 	const int yStart = std::max(0, gridPos.y - 1);
 	const int xEnd = std::min(width - 1, gridPos.x + 1);
-	const int yEnd = std::min(heigth - 1, gridPos.y + 1);
+	const int yEnd = std::min(height - 1, gridPos.y + 1);
 
 	int count = 0;
 	for (Vei2 gridPos = { xStart, yStart }; gridPos.y <= yEnd; gridPos.y++) {
@@ -203,9 +214,11 @@ int MemeField::CountNeighbourMemes(const Vei2 & gridPos) {
 }
 
 bool MemeField::GameIsWon() const {
-	for (const Tile& t : field)
-		if ((t.HasMeme() && !t.IsFlagged()) || (!t.HasMeme() && !t.IsRevealed())) 
+	for (int i = 0; i < width * height; i++) {
+		const Tile& t = field[i];
+		if ((t.HasMeme() && !t.IsFlagged()) || (!t.HasMeme() && !t.IsRevealed()))
 			return false;
+	}
 	return true;
 }
 

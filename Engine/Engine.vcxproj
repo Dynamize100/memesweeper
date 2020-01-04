@@ -148,6 +148,7 @@
     <ClInclude Include="Mouse.h" />
     <ClInclude Include="RectI.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="SelectionMenu.h" />
     <ClInclude Include="Sound.h" />
     <ClInclude Include="SoundEffect.h" />
     <ClInclude Include="SpriteCodex.h" />
@@ -163,6 +164,7 @@
     <ClCompile Include="MemeField.cpp" />
     <ClCompile Include="Mouse.cpp" />
     <ClCompile Include="RectI.cpp" />
+    <ClCompile Include="SelectionMenu.cpp" />
     <ClCompile Include="Sound.cpp" />
     <ClCompile Include="SpriteCodex.cpp" />
     <ClCompile Include="Vei2.cpp" />
